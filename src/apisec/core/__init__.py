@@ -6,6 +6,7 @@ from apisec.core.exceptions import (
     SecurityCheckError,
     SpecParseError,
 )
+from apisec.core.http_client import SecurityHTTPClient
 from apisec.core.openapi_parser import OpenAPIParser
 from apisec.core.payload_generator import PayloadGenerator
 
@@ -16,4 +17,5 @@ __all__ = [
     "DatabaseError",
     "OpenAPIParser",
     "PayloadGenerator",
+    "SecurityHTTPClient",
 ]
