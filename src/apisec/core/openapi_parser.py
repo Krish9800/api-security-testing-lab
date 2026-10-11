@@ -1,8 +1,10 @@
 """OpenAPI 3.0 / 3.1 specification parser and endpoint extractor."""
 
 import json
+from pathlib import Path
 from typing import Any
 
+import httpx
 import yaml
 
 from apisec.core.exceptions import SpecParseError
@@ -29,6 +31,26 @@ class OpenAPIParser:
             raise SpecParseError("OpenAPI root must be a dictionary.")
 
         return cls.parse_dict(data)
+
+    @classmethod
+    def parse_file(cls, file_path: Path | str) -> list[APIEndpoint]:
+        """Read and parse OpenAPI specification from local filesystem."""
+        path = Path(file_path)
+        if not path.exists():
+            raise SpecParseError(f"OpenAPI specification file not found: {path}")
+        content = path.read_text(encoding="utf-8")
+        return cls.parse_text(content)
+
+    @classmethod
+    def parse_url(cls, url: str, timeout: float = 10.0) -> list[APIEndpoint]:
+        """Fetch and parse OpenAPI specification from remote URL."""
+        try:
+            with httpx.Client(timeout=timeout, verify=False) as client:  # nosec B501
+                resp = client.get(url)
+                resp.raise_for_status()
+                return cls.parse_text(resp.text)
+        except Exception as exc:
+            raise SpecParseError(f"Failed to fetch remote OpenAPI spec from {url}: {exc}") from exc
 
     @classmethod
     def parse_dict(cls, data: dict[str, Any]) -> list[APIEndpoint]:

@@ -1,5 +1,7 @@
 """Unit tests for OpenAPI specification parser."""
 
+from pathlib import Path
+
 import pytest
 
 from apisec.core.exceptions import SpecParseError
@@ -85,3 +87,26 @@ def test_openapi_parser_malformed() -> None:
 
     with pytest.raises(SpecParseError):
         OpenAPIParser.parse_text("[]")
+
+
+def test_openapi_parser_file(tmp_path: Path) -> None:
+    """Verify parsing OpenAPI specification from filesystem path."""
+    import json
+
+    p = tmp_path / "spec.json"
+    p.write_text(
+        json.dumps(
+            {
+                "openapi": "3.0.0",
+                "info": {"title": "File API", "version": "1.0.0"},
+                "paths": {"/ping": {"get": {"summary": "Ping"}}},
+            }
+        ),
+        encoding="utf-8",
+    )
+    endpoints = OpenAPIParser.parse_file(p)
+    assert len(endpoints) == 1
+    assert endpoints[0].path == "/ping"
+
+    with pytest.raises(SpecParseError):
+        OpenAPIParser.parse_file(Path(str(tmp_path)) / "nonexistent.json")
