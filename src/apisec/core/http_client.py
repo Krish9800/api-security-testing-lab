@@ -22,10 +22,14 @@ class SecurityHTTPClient:
         base_url: str = "",
         timeout: float | None = None,
         default_headers: dict[str, str] | None = None,
+        app: Any | None = None,
+        transport: httpx.BaseTransport | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout or settings.request_timeout_seconds
         self.default_headers = default_headers or {}
+        self.app = app
+        self.transport = transport
 
     def send_request(
         self,
@@ -47,19 +51,40 @@ class SecurityHTTPClient:
 
         start_time = time.perf_counter()
         try:
-            with httpx.Client(
-                timeout=self.timeout,
-                follow_redirects=False,
-                verify=False,  # nosec B501
-            ) as client:
-                response = client.request(
-                    method=method.value,
-                    url=full_url,
-                    headers=full_headers,
-                    params=params,
-                    json=json_data,
-                    data=data,
-                )
+            if self.app is not None:
+                from starlette.testclient import TestClient
+
+                with TestClient(
+                    self.app,
+                    base_url=self.base_url or "http://testserver",
+                    raise_server_exceptions=False,
+                ) as client:
+                    response = client.request(
+                        method=method.value,
+                        url=full_url,
+                        headers=full_headers,
+                        params=params,
+                        json=json_data,
+                        data=data,
+                    )
+            else:
+                client_kwargs: dict[str, Any] = {
+                    "timeout": self.timeout,
+                    "follow_redirects": False,
+                    "verify": False,  # nosec B501
+                }
+                if self.transport is not None:
+                    client_kwargs["transport"] = self.transport
+
+                with httpx.Client(**client_kwargs) as client:
+                    response = client.request(
+                        method=method.value,
+                        url=full_url,
+                        headers=full_headers,
+                        params=params,
+                        json=json_data,
+                        data=data,
+                    )
             elapsed_ms = (time.perf_counter() - start_time) * 1000.0
             resp_body = response.text
             resp_status = response.status_code

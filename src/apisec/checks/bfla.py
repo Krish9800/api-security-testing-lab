@@ -41,9 +41,10 @@ class BFLACheck(BaseSecurityCheck):
         user_token = config.auth_token_user_a
         headers = {"Authorization": f"Bearer {user_token}"} if user_token else {}
 
+        target_path = endpoint.path.replace("{id}", "1").replace("{user_id}", "1")
         resp, tx = client.send_request(
             method=endpoint.method,
-            path=endpoint.path,
+            path=target_path,
             headers=headers,
         )
 
