@@ -1,0 +1,37 @@
+services:
+  dvapi-lab:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["lab", "start", "--host", "0.0.0.0", "--port", "8888"]
+    ports:
+      - "8888:8888"
+    networks:
+      - apisec-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; res = httpx.get('http://127.0.0.1:8888/api/v1/public/ping'); exit(0 if res.status_code == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  apisec-control-plane:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "uvicorn", "apisec.api.app:create_api_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - apisec-data:/app/data
+    networks:
+      - apisec-net
+    depends_on:
+      dvapi-lab:
+        condition: service_healthy
+
+volumes:
+  apisec-data:
+
+networks:
+  apisec-net:
+    driver: bridge

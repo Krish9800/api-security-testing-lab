@@ -58,7 +58,7 @@ class OpenAPIParser:
         endpoints: list[APIEndpoint] = []
         paths = data.get("paths", {})
         if not isinstance(paths, dict):
-            return endpoints
+            raise SpecParseError("OpenAPI 'paths' field must be an object dictionary.")
 
         for path_str, path_item in paths.items():
             if not isinstance(path_item, dict):
