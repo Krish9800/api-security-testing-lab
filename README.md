@@ -1,178 +1,172 @@
 # APISec: Automated OWASP API Security Testing Lab
 
-[![Python Version](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
-[![Code Style: Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Type Checked: mypy](https://img.shields.io/badge/type_checked-mypy-blue.svg)](https://mypy-lang.org/)
-[![Security: Bandit](https://img.shields.io/badge/security-bandit-green.svg)](https://github.com/PyCQA/bandit)
-[![Test Coverage](https://img.shields.io/badge/coverage-90%25%2B-brightgreen.svg)](https://pytest.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+Enterprise-Grade Automated Audit, Fuzzing, and Vulnerability Verification Framework mapped to the OWASP API Security Top 10.
 
-APISec is a production-grade, automated security testing framework and vulnerable mock laboratory (DvAPI) targeting the **OWASP API Security Top 10** vulnerabilities.
+[![CI Pipeline](https://github.com/Krish9800/api-security-testing-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/Krish9800/api-security-testing-lab/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python: 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![Standards: OWASP API Top 10](https://img.shields.io/badge/OWASP-API%20Top%2010%20(2023)-orange.svg)](https://owasp.org/API-Security/)
+[![CLI: Typer](https://img.shields.io/badge/CLI-Typer-green.svg)](https://typer.tiangolo.com/)
 
 ---
 
-## Architecture Overview
+## Overview & Problem Statement
+
+Application Programming Interfaces (APIs) represent the primary attack surface of modern cloud and mobile architectures. Traditional web vulnerability scanners designed for legacy HTML applications fail against API-specific flaws—such as Broken Object Level Authorization (BOLA), mass assignment, and rate limiting failures.
+
+**APISec** is an automated API security testing framework and dual-mode practice laboratory. It parses OpenAPI (Swagger) specifications, generates targeted test cases across the OWASP API Security Top 10, executes fuzzing probes, records findings with CVSS v3.1 severity scores, and hosts an embedded dual-mode API lab for defensive training.
+
+---
+
+## Architecture & Data Flow
 
 ```mermaid
 flowchart TD
-    subgraph Interfaces["Interface Surfaces"]
-        CLI["Typer CLI (apisec)"]
-        REST["FastAPI Control Plane (:8000)"]
+    Spec[OpenAPI / Swagger Spec JSON/YAML] --> Parser[API Contract Parser]
+
+    subgraph Test Case Generation
+        Parser --> EndpointMap[Endpoint & Parameter Matrix]
+        EndpointMap --> Generator[Fuzzing & Payload Generator]
     end
 
-    subgraph CoreEngine["APISec Security Engine"]
-        Parser["OpenAPI 3.0/3.1 Parser"]
-        PayloadGen["Fuzzing & Payload Generator"]
-        Runner["SecurityCheckRunner"]
-        HttpClient["Auditing SecurityHTTPClient"]
+    subgraph OWASP API Top 10 Security Checks
+        Generator --> BOLA[API1: Broken Object Level Auth BOLA]
+        Generator --> BrokenAuth[API2: Broken Authentication]
+        Generator --> MassAssign[API3: Broken Object Property Level Auth]
+        Generator --> RateLimit[API4: Unrestricted Resource Consumption]
+        Generator --> BFLA[API5: Broken Function Level Auth BFLA]
     end
 
-    subgraph Checks["OWASP API Check Modules"]
-        BOLA["API1: BOLA / IDOR"]
-        AUTH["API2: Broken Authentication"]
-        MASS["API3: Mass Assignment / BOPLA"]
-        RATE["API4: Unrestricted Resource"]
-        BFLA["API5: BFLA Admin Functions"]
-        SSRF["API6: Server-Side Request Forgery"]
-        CORS["API7: Security Misconfiguration"]
+    subgraph Dual-Mode Practice Lab
+        Lab[FastAPI Practice Lab] --> VulnAPI[Vulnerable Endpoints]
+        Lab --> HardenedAPI[Hardened Endpoints]
     end
 
-    subgraph Storage["Storage & Reporting"]
-        DB[(SQLite WAL Store)]
-        JSONRep["JSON Reporter"]
-        MDRep["Markdown Reporter"]
-        RichRep["Rich Terminal UI"]
-    end
+    subgraph Reporting & Analytics
+        BOLA --> Evaluator[Vulnerability Evaluator]
+        BrokenAuth --> Evaluator
+        MassAssign --> Evaluator
+        RateLimit --> Evaluator
+        BFLA --> Evaluator
 
-    subgraph Lab["Built-in Target Lab"]
-        DvAPI["DvAPI Mock API (:8888)"]
+        Evaluator --> Report[Audit Report: CLI / JSON / Markdown]
     end
-
-    CLI --> Runner
-    REST --> Runner
-    Runner --> Parser
-    Runner --> PayloadGen
-    Runner --> Checks
-    Checks --> HttpClient
-    HttpClient --> DvAPI
-    Runner --> DB
-    DB --> JSONRep
-    DB --> MDRep
-    DB --> RichRep
 ```
 
 ---
 
-## Features
+## Verified Features
 
-- **OWASP API Top 10 Coverage:** Automated detection checks for BOLA, Broken Authentication, Mass Assignment, Rate Limiting, BFLA, SSRF, and CORS Misconfigurations.
-- **OpenAPI 3.0 / 3.1 Parser:** Parses JSON and YAML specs from local files or remote endpoints.
-- **Damn Vulnerable API (DvAPI):** Built-in mock API testbed with 8 vulnerable routes for offline testing and verification.
-- **Resilient Auditing Client:** Captures full HTTP transaction traces with automatic credential redaction (`[REDACTED]`).
-- **SQLite WAL Storage:** Thread-safe persistence with foreign key cascade deletion and indexing.
-- **Multi-Format Reporting:** Generates machine-readable JSON, executive Markdown, and interactive Rich terminal tables.
-- **Dual Interfaces:** Typer command-line interface and FastAPI REST control plane.
-- **Hardened Rootless Container:** Multi-stage Docker build running under non-root UID 10001 (`apisec`).
+- **OpenAPI Specification Parsing:** Automatically parses OpenAPI 3.0 / Swagger specifications to map endpoints, HTTP methods, parameters, and request schemas.
+- **OWASP API Security Top 10 Coverage:**
+  - **API1:2023 Broken Object Level Authorization (BOLA):** Substitutes ID parameters across authorization contexts.
+  - **API2:2023 Broken Authentication:** Tests for missing tokens, expired tokens, and weak signing.
+  - **API3:2023 Broken Object Property Level Auth:** Fuzzes hidden fields (`isAdmin`, `role`) via mass assignment.
+  - **API4:2023 Unrestricted Resource Consumption:** Tests for lack of rate limiting and memory-heavy request sizes.
+  - **API5:2023 Broken Function Level Authorization (BFLA):** Tests administrative endpoints using standard user credentials.
+- **Embedded Dual-Mode Lab:** Interactive FastAPI service containing deliberately vulnerable routes paired with defensive code examples.
+- **Audit Reports:** Generates structured findings with reproduction curl commands, CVSS scores, and remediation advice.
 
 ---
 
-## Quickstart
+## Technology Stack
 
-### 1. Installation
+- **Runtime:** Python 3.12+
+- **HTTP Engine:** HTTPX (Async)
+- **Data Validation:** Pydantic v2
+- **CLI Framework:** Typer & Rich
+- **API Framework:** FastAPI & Uvicorn
+- **Testing:** Pytest, Ruff, Mypy, Bandit
+
+---
+
+## Requirements & Installation
 
 ```bash
-# Clone and set up virtual environment
+# Clone the repository
+git clone https://github.com/Krish9800/api-security-testing-lab.git
+cd api-security-testing-lab
+
+# Create and activate virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e ".[dev]"
+
+# Install dependencies
+pip install -e .
 ```
 
-### 2. Start the DvAPI Vulnerable Lab
+---
+
+## Verified Usage Examples
+
+### 1. Command-Line Interface (CLI)
 
 ```bash
-apisec lab start --host 127.0.0.1 --port 8888
-```
+# Scan a target API using its OpenAPI specification
+apisec scan http://localhost:8000 --spec openapi.json
 
-DvAPI documentation will be available at:
-- Swagger UI: `http://127.0.0.1:8888/docs`
-- OpenAPI Spec: `http://127.0.0.1:8888/openapi.json`
+# Scan with authentication token and specific checks
+apisec scan http://localhost:8000 --spec openapi.json --auth-token "eyJhbGciOi..." --checks bola,rate_limit
 
-### 3. Run an Automated Security Assessment
+# Launch the embedded vulnerable/hardened practice lab
+apisec lab --port 8080
 
-```bash
-apisec scan \
-  --target http://127.0.0.1:8888 \
-  --auth-a mock-token-alice \
-  --auth-b mock-token-bob \
-  --admin mock-token-admin \
-  --out report.md \
-  --format markdown
-```
-
-### 4. View Scan History & Stats
-
-```bash
-# View recent scans
+# View past scan history and summary statistics
 apisec history
-
-# View global vulnerability statistics
 apisec stats
+
+# Generate an exportable vulnerability report from a scan session
+apisec report --scan-id <session_id> --format markdown
 ```
 
----
-
-## REST Control Plane
-
-To run the REST API control plane:
+### 2. REST API Service
 
 ```bash
-uvicorn apisec.api.app:create_api_app --factory --host 0.0.0.0 --port 8000
+# Start the APISec API daemon
+uvicorn apisec.api.app:app --host 127.0.0.1 --port 8000
 ```
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/health` | Service health status |
-| `POST` | `/api/v1/scans` | Trigger an API security scan |
-| `GET` | `/api/v1/scans` | List scan history |
-| `GET` | `/api/v1/scans/{id}` | Get scan session details |
-| `GET` | `/api/v1/scans/{id}/report` | Retrieve JSON or Markdown report |
-| `GET` | `/api/v1/stats` | Aggregate vulnerability metrics |
+Endpoints available at `http://127.0.0.1:8000/docs`:
+- `GET /health` — Service health check
+- `GET /api/v1/scans` — List scan sessions
+- `GET /api/v1/scans/{session_id}` — Inspect detailed findings for a scan session
+- `GET /api/v1/scans/{session_id}/report` — Fetch formatted vulnerability report
+- `GET /api/v1/stats` — Aggregated scan statistics
 
 ---
 
-## Docker Deployment
-
-Run both the vulnerable mock lab and the scanner control plane using Docker Compose:
+## Testing & Quality Gates
 
 ```bash
-docker compose up -d
+# Run complete test suite with coverage
+pytest --cov=apisec --cov-report=term-missing
+
+# Linting and static analysis
+ruff check .
+ruff format --check .
+mypy src/apisec
 ```
 
 ---
 
-## Verification & Quality Gates
+## Security Model & Threat Boundaries
 
-Run all quality gate checks to verify 100% adherence:
-
-```bash
-# Code formatting
-ruff format --check src tests
-
-# Static linting
-ruff check src tests
-
-# Static type checking
-mypy src tests
-
-# Security SAST audit
-bandit -r src
-
-# Unit and integration test suite with coverage
-pytest --cov=src --cov-report=term-missing --cov-fail-under=90
-```
+- **Target Scoping:** The test engine strictly confines requests to the base URL declared in the target OpenAPI specification.
+- **Rate-Safe Fuzzing:** Includes delay timers and concurrency bounds to prevent accidental target denial of service.
+- **Dual-Mode Lab Safety:** The practice lab is bound to localhost and runs on isolated in-memory mock data.
 
 ---
 
-## License
+## Limitations & Known Issues
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- **GraphQL Support:** Currently tailored for RESTful APIs; GraphQL introspection and query depth fuzzing are planned for future versions.
+- **Complex Multi-Step Business Logic:** Automated checks test atomic endpoint vulnerabilities; intricate multi-step workflow logic (e.g. checkout fraud) requires manual test definitions.
+
+---
+
+## License & Responsible Use
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+> [!CAUTION]
+> **Authorization Required:** Never execute automated API security scans against production services without explicit written authorization.
